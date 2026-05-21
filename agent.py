@@ -1,6 +1,6 @@
 """
 agent.py — This is for the agent's behaviour - will use Claude as a base before establishing
-final changes
+what we want to proceed with changes
 Privacy is key.
 
 What is needed:
@@ -15,7 +15,7 @@ What is needed:
 import logging
 
 logging.basicConfig(
-    level=logging.info,
+    level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s", #AI recommended this format
     handlers=[
         logging.FileHandler("agent_activity.log"),
