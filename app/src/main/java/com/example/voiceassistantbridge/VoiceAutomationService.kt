@@ -14,6 +14,7 @@ import androidx.core.net.toUri
 
 class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListener {
 
+    private lateinit var commandReceiver: VoiceCommandReceiver
     private lateinit var tts: TextToSpeech
     private var isTtsReady = false
     private var watchLaterRetryCount = 0
@@ -23,6 +24,14 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
         super.onCreate()
         // Initialize TTS so the app can talk back eyes-free
         tts = TextToSpeech(this, this)
+
+        // Initialize and register the radio receiver
+        commandReceiver = VoiceCommandReceiver(this)
+        val filter = android.content.IntentFilter().apply {
+            addAction(VoiceCommandReceiver.ACTION_OPEN_WATCH_LATER)
+            addAction(VoiceCommandReceiver.ACTION_CLICK_TEXT)
+        }
+        registerReceiver(commandReceiver, filter, RECEIVER_EXPORTED)
     }
 
     override fun onInit(status: Int) {
@@ -145,6 +154,7 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
     }
 
     /**
+     * VERY IMPORTANT
      * Call this method when your custom voice command parser (or an incoming Intent) 
      * tells the app to click something specific on the screen.
      */
@@ -220,6 +230,8 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
 
     override fun onDestroy() {
         super.onDestroy()
+        // Unregister so it doesn't leak memory when turned off
+        unregisterReceiver(commandReceiver)
         if (::tts.isInitialized) {
             tts.stop()
             tts.shutdown()
