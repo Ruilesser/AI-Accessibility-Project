@@ -1,16 +1,23 @@
 package com.example.voiceassistantbridge
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Intent
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.util.Log
 import java.util.Locale
+import androidx.core.net.toUri
 
 class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListener {
 
     private lateinit var tts: TextToSpeech
     private var isTtsReady = false
+    private var watchLaterRetryCount = 0
+    private val maxRetries = 6 // Will scan the screen for up to 3 seconds (6*500ms)
 
     override fun onCreate() {
         super.onCreate()
@@ -43,6 +50,97 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
             if (packageName.contains("ubereats") || packageName.contains("skipthedishes")) {
                 speak("Opened food delivery app. Looking for checkout targets.")
             }
+        }
+    }
+
+    /**
+     * Launches the native YouTube App hands-free.
+     */
+    fun openYouTubeWatchLaterHandsFree() {
+        speak("Opening YouTube.")
+
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            data = "https://www.youtube.com".toUri()
+            setPackage("com.google.android.youtube") // Guarantees the native app opens
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        try {
+            startActivity(intent)
+
+            // Wait 2.5 seconds for the app launch animation before starting UI scans
+            Handler(Looper.getMainLooper()).postDelayed({
+                executeYouTubeNavigationSequence()
+            }, 2500)
+
+        } catch (e: Exception) {
+            speak("YouTube application is not installed or could not be opened.")
+        }
+    }
+
+    /**
+     * Dynamically searches for and clicks the "You" or "Library" main profile menu.
+     */
+    private fun executeYouTubeNavigationSequence() {
+        val rootNode: AccessibilityNodeInfo? = rootInActiveWindow
+        if (rootNode == null) {
+            speak("Unable to scan YouTube screen layout.")
+            return
+        }
+
+        // Handles modern YouTube layout variations | new version is you, old version is library
+        val targetNode = findNodeByTextAlternative(rootNode, "You")
+            ?: findNodeByTextAlternative(rootNode, "Library")
+
+        if (targetNode != null) {
+            if (performClickAction(targetNode)) {
+                speak("Navigating to profile.")
+
+                // Pause briefly for page transition, then search for Watch Later
+                Handler(Looper.getMainLooper()).postDelayed({
+                    clickWatchLaterSubMenu()
+                }, 1500)
+            }
+        } else {
+            // Fallback: If navigation buttons aren't visible, try searching the direct screen anyway
+            clickWatchLaterSubMenu()
+        }
+    }
+
+    /**
+     * Searches layout for the specific "Watch later" item with automatic retry logic.
+     */
+    private fun clickWatchLaterSubMenu() {
+        val freshRootNode: AccessibilityNodeInfo? = rootInActiveWindow
+        if (freshRootNode == null) {
+            retryWatchLaterNavigation()
+            return
+        }
+
+        val watchLaterNode = findNodeByTextAlternative(freshRootNode, "Watch later")
+        if (watchLaterNode != null && performClickAction(watchLaterNode)) {
+            speak("Your watch later queue is now open.")
+            watchLaterRetryCount = 0 // Reset counter on structural success
+        } else {
+            retryWatchLaterNavigation()
+        }
+    }
+
+    /**
+     * Recursive structural retry to protect users from slow loading app screens.
+     * Recursion temporary and easy - don't change this please
+     */
+    private fun retryWatchLaterNavigation() {
+        if (watchLaterRetryCount < maxRetries) {
+            watchLaterRetryCount++
+            Log.d("VoiceAutomation", "Watch later not found yet. Retrying attempt $watchLaterRetryCount")
+
+            Handler(Looper.getMainLooper()).postDelayed({
+                clickWatchLaterSubMenu()
+            }, 500)
+        } else {
+            speak("Failed to locate Watch Later. Please try the command again.")
+            watchLaterRetryCount = 0 // Clear loop state
         }
     }
 
@@ -87,6 +185,33 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
             currentNode = currentNode.parent
         }
         return false
+    }
+
+    /**
+     * Backup deep search utility to read hidden accessibility descriptions.
+     */
+    private fun findNodeByTextAlternative(root: AccessibilityNodeInfo, targetText: String): AccessibilityNodeInfo? {
+        val matches = root.findAccessibilityNodeInfosByText(targetText)
+        if (matches.isNotEmpty()) {
+            return matches[0]
+        }
+        return recursiveSearchByDescription(root, targetText)
+    }
+
+    private fun recursiveSearchByDescription(node: AccessibilityNodeInfo?, targetText: String): AccessibilityNodeInfo? {
+        if (node == null) return null
+
+        val description = node.contentDescription?.toString() ?: ""
+        if (description.contains(targetText, ignoreCase = true)) {
+            return node
+        }
+
+        // Repeat until found
+        for (i in 0 until node.childCount) {
+            val found = recursiveSearchByDescription(node.getChild(i), targetText)
+            if (found != null) return found
+        }
+        return null
     }
 
     override fun onInterrupt() {
