@@ -8,9 +8,10 @@ import android.util.Log
 class VoiceCommandReceiver(private val service: VoiceAutomationService) : BroadcastReceiver() {
 
     companion object {
-        // These are the custom "frequencies" or Action strings we listen for
+        // Common actions to be used
         const val ACTION_OPEN_WATCH_LATER = "com.example.voiceassistantbridge.OPEN_WATCH_LATER"
         const val ACTION_CLICK_TEXT = "com.example.voiceassistantbridge.CLICK_TEXT"
+        const val ACTION_RUN_TEST = "com.example.voiceassistantbridge.RUN_TEST"
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
@@ -19,15 +20,17 @@ class VoiceCommandReceiver(private val service: VoiceAutomationService) : Broadc
 
         when (action) {
             ACTION_OPEN_WATCH_LATER -> {
-                // Call your YouTube function directly on the running service
                 service.openYouTubeWatchLaterHandsFree()
             }
             ACTION_CLICK_TEXT -> {
-                // Allows Gemini to pass arbitrary button names to your clicker tool
                 val targetText = intent.getStringExtra("target_text") ?: ""
                 if (targetText.isNotEmpty()) {
                     service.findAndClickButtonByText(targetText)
                 }
+            }
+            // Run a quick test response
+            ACTION_RUN_TEST -> {
+                service.executeSystemDiagnosticsTest()
             }
         }
     }

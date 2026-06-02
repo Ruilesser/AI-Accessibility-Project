@@ -11,6 +11,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.util.Log
 import java.util.Locale
 import androidx.core.net.toUri
+import kotlin.system.exitProcess
 
 class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListener {
 
@@ -30,8 +31,27 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
         val filter = android.content.IntentFilter().apply {
             addAction(VoiceCommandReceiver.ACTION_OPEN_WATCH_LATER)
             addAction(VoiceCommandReceiver.ACTION_CLICK_TEXT)
+            addAction(VoiceCommandReceiver.ACTION_RUN_TEST)
         }
         registerReceiver(commandReceiver, filter, RECEIVER_EXPORTED)
+
+        // GLOBAL FAILSAFE: Intercepts all unanticipated app-killing crashes
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            Log.e("VoiceAutomationFailsafe", "CRITICAL CRASH DETECTED on thread ${thread.name}", throwable)
+
+            // Build an intent to automatically trigger a fresh reboot of your service/app package
+            val restartIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            }
+
+            if (restartIntent != null) {
+                startActivity(restartIntent)
+            }
+
+            // Terminate the broken process so the operating system clears the stalled memory state safely
+            android.os.Process.killProcess(android.os.Process.myPid())
+            exitProcess(10)
+        }
     }
 
     override fun onInit(status: Int) {
@@ -60,6 +80,17 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
                 speak("Opened food delivery app. Looking for checkout targets.")
             }
         }
+    }
+
+    /**
+     * Simple test function
+     * Verifies that Gemini voice triggers are executing and communicating with the app
+     */
+    fun executeSystemDiagnosticsTest() {
+        Log.d("VoiceAutomationTest", "Diagnostics triggered successfully via Intent broadcast.")
+
+        // Immediate spoken verification out of the phone speaker
+        speak("Testing the voice assistant bridge.")
     }
 
     /**
