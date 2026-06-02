@@ -249,17 +249,24 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
     }
 
     // Function to do the click
+    // Added safetyDepth precaution so infinite loop is addressed
     private fun performClickAction(node: AccessibilityNodeInfo?): Boolean {
-        // If a step passes a null node, return false instead of throwing a compilation error
         var currentNode = node ?: return false
-        while (currentNode != null) {
+        var safetyDepthCounter = 0
+        val maxLayoutDepth = 25 // Android layouts rarely exceed 15-20 layers deep
+
+        while (currentNode != null && safetyDepthCounter < maxLayoutDepth) {
             if (currentNode.isClickable) {
                 // Execute the physical virtual click
                 currentNode.performAction(AccessibilityNodeInfo.ACTION_CLICK)
                 return true
             }
             currentNode = currentNode.parent
+            safetyDepthCounter++ // Increment every time we climb up a layer
         }
+
+        // If we hit null OR exceeded 25 layers, safely give up
+        Log.w("VoiceAutomation", "Click failed: Reached root or hit safety depth limit.")
         return false
     }
 
