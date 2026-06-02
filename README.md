@@ -94,7 +94,7 @@ Use this routine to verify that your voice commands are successfully hitting you
    * Paste the exact package intent call:
 ```text
      Send intent com.example.voiceassistantbridge.RUN_TEST
-     ```
+```
 6. Tap **Save**. 
 7. *To test:* Say *"Hey Gemini, test voice bridge."* The phone will audibly respond: *"Testing..."* out of its primary speaker.
 
