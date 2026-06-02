@@ -13,31 +13,33 @@ An open-source Android Accessibility app designed to help individuals manage dai
 
 * **System-Wide Intercepts:** Automated UI scanning across active system windows and multi-layered applications.
 * **Eyes-Free Feedback:** Dedicated Text-to-Speech (TTS) engine that forces all confirmation responses.
+
 * **Hands-Free Activation:** Eliminates the need to physically press or hold a "Record Speech" button by leveraging continuous "Hey Google" ambient wake-word integration.
+
+* **Identity & Authentication:** Deep window indexing capable of overriding system isolation blocks to locate and select "Autofill", "Sign In", or "Continue" credential prompts.
+
+* **Voice Messages:** Hands-free setup of outgoing text-to-speech voice messages.
 
 ### Supported Tasks & Target Ecosystems
 
 * **Media & Entertainment:** * **YouTube Navigation:** Multi-step macro to automatically launch the native app, navigate past layout walls (the "You" profile page or expanded "Playlists" menus), and surface the **Watch Later** queue.
 
-### Provided by Gemini default:
-* **Spotify Integration:** Specialized remote routing targeting an Android tablet acting as a dedicated music player.
-* **Television:** Hands-free surfing of TV channels.
-
-
 * **Food Delivery & Shopping:**
 * Contextual intent monitoring and button targeting for **SkipTheDishes**, **UberEats**, and **Amazon Shopping** checkout pages.
 
 
+### Provided by Gemini default:
+* **Spotify Integration:** Specialized remote routing targeting an Android tablet acting as a dedicated music player.
+
+* **Television:** Hands-free surfing of TV channels.
+
+
 * **Scheduling & Productivity:**
 * **Calendar Management:** Conversational scheduling engine triggered via sequential voice tokens (*"Add to calendar"* followed by event parameters).
+
 * **Proactive Reminders:** Automated alerting layers configured for 1 week, 1 day, day-of, and 15-minute intervals.
+
 * **ETA Coordination:** Dynamic lookup of current calendar status paired with automated message generation to broadcast ETAs.
-
-
-* **System Tools & Security:**
-* **Identity & Authentication:** Deep window indexing capable of overriding system isolation blocks to locate and select "Autofill", "Sign In", or "Continue" credential prompts.
-* **Secure Password Storage:** Integration with an encrypted file architecture hosted on a private server.
-* **Voice Messages:** Hands-free setup of outgoing text-to-speech voice messages.
 
 
 
