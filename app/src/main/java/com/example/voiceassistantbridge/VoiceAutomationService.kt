@@ -54,7 +54,7 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val packageName = event.packageName?.toString() ?: ""
             Log.d("VoiceAutomation", "User switched to app: $packageName")
-            
+
             // Automatically trigger an action when a specific app opens:
             if (packageName.contains("ubereats") || packageName.contains("skipthedishes")) {
                 speak("Opened food delivery app. Looking for checkout targets.")
@@ -97,27 +97,28 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
             return
         }
 
-        // Handles modern YouTube layout variations | new version is you, old version is library
         val targetNode = findNodeByTextAlternative(rootNode, "You")
             ?: findNodeByTextAlternative(rootNode, "Library")
 
-        if (targetNode != null) {
-            if (performClickAction(targetNode)) {
-                speak("Navigating to profile.")
+        if (targetNode != null && performClickAction(targetNode)) {
+            speak("Navigating to profile.")
 
-                // Pause briefly for page transition, then search for Watch Later
-                Handler(Looper.getMainLooper()).postDelayed({
-                    clickWatchLaterSubMenu()
-                }, 1500)
-            }
+            // Reset our retry counter for the first phase
+            watchLaterRetryCount = 0
+
+            // Pause briefly for the page transition, then search for Watch Later
+            Handler(Looper.getMainLooper()).postDelayed({
+                clickWatchLaterSubMenu()
+            }, 1500)
         } else {
-            // Fallback: If navigation buttons aren't visible, try searching the direct screen anyway
+            // Fallback: If bottom tabs aren't accessible, try scanning the direct screen anyway
             clickWatchLaterSubMenu()
         }
     }
 
     /**
      * Searches layout for the specific "Watch later" item with automatic retry logic.
+     * If it fails after retrying, expands searh into Playlists sub-menu
      */
     private fun clickWatchLaterSubMenu() {
         val freshRootNode: AccessibilityNodeInfo? = rootInActiveWindow
@@ -129,15 +130,15 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
         val watchLaterNode = findNodeByTextAlternative(freshRootNode, "Watch later")
         if (watchLaterNode != null && performClickAction(watchLaterNode)) {
             speak("Your watch later queue is now open.")
-            watchLaterRetryCount = 0 // Reset counter on structural success
+            watchLaterRetryCount = 0 // Success! Clear loop counter
         } else {
             retryWatchLaterNavigation()
         }
     }
 
     /**
-     * Recursive structural retry to protect users from slow loading app screens.
-     * Recursion temporary and easy - don't change this please
+     * Manages retries for finding the "Watch later" button directly.
+     * If it exhausts all retries, it triggers the secondary fallback to open Playlists.
      */
     private fun retryWatchLaterNavigation() {
         if (watchLaterRetryCount < maxRetries) {
@@ -148,8 +149,51 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
                 clickWatchLaterSubMenu()
             }, 500)
         } else {
-            speak("Failed to locate Watch Later. Please try the command again.")
-            watchLaterRetryCount = 0 // Clear loop state
+            // PHASE 2 FALLBACK: "Watch later" isn't visible on the main screen.
+            // Let's find the Playlists or "See all" button to reveal it.
+            Log.d("VoiceAutomation", "Watch later not visible. Attempting to expand Playlists menu.")
+            watchLaterRetryCount = 0 // Reset counter for the next phase
+            navigateToPlaylistsSection()
+        }
+    }
+
+    /**
+     * Finds and clicks "Playlists" or "See all" to expand hidden lists.
+     */
+    private fun navigateToPlaylistsSection() {
+        val freshRootNode: AccessibilityNodeInfo = rootInActiveWindow ?: return
+
+        // Because freshRootNode is now guaranteed non-null, this line works perfectly!
+        val expandNode = findNodeByTextAlternative(freshRootNode, "Playlists")
+            ?: findNodeByTextAlternative(freshRootNode, "See all")
+
+        if (expandNode != null && performClickAction(expandNode)) {
+            speak("Expanding playlists views.")
+
+            // Give the sub-menu 1.5 seconds to open, then run final sweep
+            Handler(Looper.getMainLooper()).postDelayed({
+                lookForWatchLaterInPlaylists()
+            }, 1500)
+        } else {
+            speak("Failed to find Watch Later or Playlists menu.")
+        }
+    }
+
+    /**
+     * Step 5 (Final Scan): Final sweep inside the expanded playlist window.
+     */
+    private fun lookForWatchLaterInPlaylists() {
+        val finalRootNode: AccessibilityNodeInfo? = rootInActiveWindow
+        if (finalRootNode == null) {
+            speak("Screen content lost during playlist expansion.")
+            return
+        }
+
+        val watchLaterNode = findNodeByTextAlternative(finalRootNode, "Watch later")
+        if (watchLaterNode != null && performClickAction(watchLaterNode)) {
+            speak("Your watch later queue is now open.")
+        } else {
+            speak("Could not find your Watch Later list anywhere on this screen.")
         }
     }
 
@@ -159,39 +203,61 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
      * tells the app to click something specific on the screen.
      */
     fun findAndClickButtonByText(targetText: String) {
-        // Get the root window node currently visible on the phone screen
-        val rootNode: AccessibilityNodeInfo? = rootInActiveWindow
-        if (rootNode == null) {
-            speak("Screen content is not available.")
+        // Get ALL interactive windows currently visible on the screen (including system)
+        val windows = windows
+        if (windows.isEmpty()) {
+            // Fallback to active window if window list is empty
+            val rootNode: AccessibilityNodeInfo? = rootInActiveWindow
+            if (rootNode != null) {
+                searchAndClickInNode(rootNode, targetText)
+            } else {
+                speak("Screen content is not available.")
+            }
             return
         }
 
-        // Search the UI layout tree for matching text (case-insensitive search)
-        val list: List<AccessibilityNodeInfo> = 
-            rootNode.findAccessibilityNodeInfosByText(targetText)
+        var clickedSuccessfully = false
 
-        if (list.isNotEmpty()) {
-            for (node in list) {
-                // Ensure the node or its parent container is actually clickable
-                if (performClickAction(node)) {
-                    speak("Successfully clicked $targetText.")
-                    return
+        // Loop through every window layers from top to bottom
+        for (window in windows) {
+            val rootNode = window.root
+            if (rootNode != null) {
+                if (searchAndClickInNode(rootNode, targetText)) {
+                    clickedSuccessfully = true
+                    break // Stop searching once we found and clicked it
                 }
             }
-        } else {
+        }
+
+        if (!clickedSuccessfully) {
             speak("Could not find a button labeled $targetText on this screen.")
         }
     }
 
+    // Helper method to break out the clicking logic
+    private fun searchAndClickInNode(rootNode: AccessibilityNodeInfo, targetText: String): Boolean {
+        val list: List<AccessibilityNodeInfo> = rootNode.findAccessibilityNodeInfosByText(targetText)
+        if (list.isNotEmpty()) {
+            for (node in list) {
+                if (performClickAction(node)) {
+                    speak("Successfully clicked $targetText.")
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    // Function to do the click
     private fun performClickAction(node: AccessibilityNodeInfo?): Boolean {
-        var currentNode = node
+        // If a step passes a null node, return false instead of throwing a compilation error
+        var currentNode = node ?: return false
         while (currentNode != null) {
             if (currentNode.isClickable) {
                 // Execute the physical virtual click
                 currentNode.performAction(AccessibilityNodeInfo.ACTION_CLICK)
                 return true
             }
-            // If the text node isn't clickable, check its parent layout block
             currentNode = currentNode.parent
         }
         return false
