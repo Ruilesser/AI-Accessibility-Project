@@ -76,73 +76,40 @@ Because this application acts directly on the interface, Android safely isolates
 
 ---
 
-## Gemini Voice Automations Configuration
+## Gemini Voice Automations Configuration (Via App Actions)
 
-Google Assistant and Gemini route system commands through the **Google Home** application.
+This project uses Android’s native **App Actions** ecosystem (`shortcuts.xml`). When Gemini or Google Assistant intercepts an explicit voice command referencing your app, it extracts the target phrasing, binds it to an internal static capability, and passes it directly down to your local application architecture.
 
-Because standalone phone routines have transitioned to the cloud, you must build these shortcuts directly inside the Google Home ecosystem to prevent the AI from defaulting to a web search.
+### Step 1: Install the Local Voice Bridge Synchronizer
+To make Gemini on your physical phone index your local code parameters, you need to use the official development assistant tool:
+1. In Android Studio, go to **File > Settings** (or *Android Studio > Preferences* on macOS).
+2. Select **Plugins**, search the **Marketplace** for `Google Assistant`, install it, and restart your IDE.
+3. **Account Alignment (Critical):** Ensure that the **exact same Google Account** is signed into:
+   * Your Android Studio IDE profile.
+   * The primary profile on your physical test phone.
+   * The primary Google App / Assistant voice-matching engine on the handset.
 
-### Process 1: Creating the System Connection Diagnostic Test
-Use this routine to verify that your voice commands are successfully hitting your background APK without needing to open YouTube or find text on a screen.
-
-1. Open the **Google Home** app on your phone or tablet.
-2. Navigate to the **Automations** tab on the bottom menu and tap the **"+" (Add)** floating action button.
-3. Select **Household** or **Personal** (Personal is recommended for individual voice matching).
-4. **Configure the Trigger ("When I say to Gemini/Google"):**
-   * Tap **Add starter** and choose **Voice command**.
-   * Type the phrase: `Test voice bridge` (or `Run assistant diagnostics`).
-5. **Configure the System Action:**
-   * Tap **Add action** and select **Try adding your own**.
-   * Paste the exact package intent call:
-```text
-   Send intent com.example.voiceassistantbridge.RUN_TEST
-   ```
-6. Tap **Save**. 
-7. *To test:* Say *"Hey Gemini, test voice bridge."* The phone will audibly respond: *"Testing..."* out of its primary speaker.
-
-### Process 2: Creating a Universal Wildcard Click Tool
-This routine maps a single conversational shortcut to your generic button-clicking engine, removing the need to hardcode specific words ahead of time.
-
-1. Inside the **Automations** tab of the Google Home app, tap the **"+" (Add)** icon.
-2. **Configure the Trigger:**
-   * Tap **Add starter** and choose **Voice command**.
-   * Type exact text: `Click $` (or `Tap $`). The `$` character acts as an on-the-fly wildcard variable.
-3. **Configure the System Action:**
-   * Tap **Add action** and select **Try adding your own**.
-   * Paste the following command sequence:
-```text
-   Send intent com.example.voiceassistantbridge.CLICK_TEXT with extra target_text string $
-   ```
-   *(Note: If Gemini attempts to run a web search instead of firing the intent, change this action line to: `Open app by intent: com.example.voiceassistantbridge.CLICK_TEXT`)*
-4. Tap **Save**.
-
-### Process 3: Creating the YouTube Watch Later Macro
-This routing allows the user to easily load their watch queue hands-free using completely natural phrasing.
-
-1. Inside the **Automations** tab, tap the **"+" (Add)** icon.
-2. **Configure the Trigger:**
-   * Tap **Add starter** and choose **Voice command**.
-   * Type exact text: `Open my Watch Later queue` (or `Check my watch later list`).
-3. **Configure the Action:**
-   * Tap **Add action** and select **Try adding your own**.
-   * Paste the package-restricted signal launcher:
-```text
-   Send intent com.example.voiceassistantbridge.OPEN_WATCH_LATER
-   ```
-4. Tap **Save**.
+### Step 2: Push the Build and Generate the Cloud Preview
+1. Connect your device via USB data cable, ensure USB Debugging is active, and click the green **Run (Play button)** to install the latest APK.
+2. In your phone's **Settings > Accessibility**, find your app name and toggle the master permission to **ON**.
+3. In Android Studio's top navigation bar, go to **Tools > App Actions > Google Assistant > App Actions Test Tool**.
+4. In the side panel that appears, type your desired vocally spoken application name into the **App name** box (e.g., `Voice Assistant` or `Voice Bridge`).
+5. Click **Create Preview**. This registers your temporary local voice profile to the cloud securely.
 
 ---
 
-## Operational Vocabulary Matrix
+## 📱 Operational Vocabulary Matrix
 
-Once the setups above are complete, you can use any of these fluid phrase variations. All feedback confirmations will automatically announce out of the phone's primary audio speaker.
+Once the App Actions preview is initialized, you can use any of these natural phrase sequences directly into your phone by waking up your assistant device (*"Hey Gemini"* or *"Hey Google"*). Gemini will automatically forward the request directly into your background service.
 
-| Intent Context | Natural Phrase to Speak | System Execution Result |
+| Intent Context | Voice Phrase to Speak | System Execution Result |
 | :--- | :--- | :--- |
-| **System Check** | *"Hey Gemini, test voice bridge"* <br>or *"Hey Google, run assistant diagnostics"* | Triggers `executeSystemDiagnosticsTest()`, logging the signal and speaking back a success confirmation out loud. |
-| **YouTube Playlist** | *"Hey Gemini, open my Watch Later queue"* | Launches native YouTube app, opens profile layout, checks for visibility, and expands Playlists via fallback if hidden. |
-| **Credential Filling** | *"Hey Google, click Autofill"* | Intercepts system overlay window layer, scans for active text match, and simulates physical input tap. |
-| **Form Navigation** | *"Hey Gemini, click Continue"* | Bypasses standard app boundaries to activate general confirmation workflows dynamically. |
+| **System Check** | *"Hey Gemini, search for **test** on Voice Assistant"* | Fires `VoiceProxyActivity`, triggers the internal `RUN_TEST` broadcast, and loops a verbal confirmation out of the phone speaker. |
+| **YouTube Playlist** | *"Hey Google, search for **watch later** on Voice Assistant"* | Forces open the native YouTube app, maps layout visibility states, and executes the multi-stage navigation sweep logic. |
+| **Universal Clicker** | *"Hey Gemini, search for **click Autofill** on Voice Assistant"* | Strips out control verbs, captures the core keyword text ("Autofill"), and attempts to pass a click action to the target node. |
+| **Form Navigation** | *"Hey Google, search for **click Continue** on Voice Assistant"* | Traverses parent layers of the target visual layout boundary elements to trigger unclickable raw confirmation strings. |
+
+*(Note: Whenever you make structural adjustments to the `shortcuts.xml` layout matrix, remember to click the **Update** button inside the Android Studio side panel tool to sync changes down to your test device).*
 
 ---
 
