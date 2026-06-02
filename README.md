@@ -93,8 +93,8 @@ Use this routine to verify that your voice commands are successfully hitting you
    * Tap **Add action** and select **Try adding your own**.
    * Paste the exact package intent call:
 ```text
-     Send intent com.example.voiceassistantbridge.RUN_TEST
-```
+   Send intent com.example.voiceassistantbridge.RUN_TEST
+   ```
 6. Tap **Save**. 
 7. *To test:* Say *"Hey Gemini, test voice bridge."* The phone will audibly respond: *"Testing..."* out of its primary speaker.
 
@@ -109,8 +109,8 @@ This routine maps a single conversational shortcut to your generic button-clicki
    * Tap **Add action** and select **Try adding your own**.
    * Paste the following command sequence:
 ```text
-     Send intent com.example.voiceassistantbridge.CLICK_TEXT with extra target_text string $
-     ```
+   Send intent com.example.voiceassistantbridge.CLICK_TEXT with extra target_text string $
+   ```
    *(Note: If Gemini attempts to run a web search instead of firing the intent, change this action line to: `Open app by intent: com.example.voiceassistantbridge.CLICK_TEXT`)*
 4. Tap **Save**.
 
@@ -125,8 +125,8 @@ This routing allows the user to easily load their watch queue hands-free using c
    * Tap **Add action** and select **Try adding your own**.
    * Paste the package-restricted signal launcher:
 ```text
-     Send intent com.example.voiceassistantbridge.OPEN_WATCH_LATER
-     ```
+   Send intent com.example.voiceassistantbridge.OPEN_WATCH_LATER
+   ```
 4. Tap **Save**.
 
 ---
