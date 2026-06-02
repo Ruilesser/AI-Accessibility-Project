@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <!--Defaults -->
 
     <application
         android:allowBackup="true"
@@ -13,8 +12,34 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Voiceassistantbridge">
 
+        <!-- FIXED: Combined the Launcher and Proxy into VoiceProxyActivity. -->
+        <!-- This removes the missing MainActivity error entirely. -->
+        <activity
+            android:name=".VoiceProxyActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:exported="true">
+
+            <!-- Standard App Icon Launcher Hooks -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- FIXED: Removed BROWSABLE to clear the "Missing data element" error -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <!-- Links Gemini/Google Assistant capabilities to your shortcuts layout -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity>
+
         <!-- Specify apps and events to listen to: use VoiceAutomationService.kt -->
-        <!-- BIND_ACCESSIBILITY_SERVICE: only the Android system can bind (use) it -->
+        <!-- BIND_ACCESSIBILITY_SERVICE: only the Android system can use it -->
         <service
             android:name=".VoiceAutomationService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"

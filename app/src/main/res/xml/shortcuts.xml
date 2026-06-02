@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Universal Capability mapped to a Built-In Intent -->
+    <capability android:name="actions.intent.GET_THING">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.example.voiceassistantbridge"
+            android:targetClass="com.example.voiceassistantbridge.VoiceProxyActivity">
+            <!-- This maps the voice parameter text to a parameter key called 'query' -->
+            <parameter
+                android:name="thing.name"
+                android:key="query" />
+        </intent>
+    </capability>
+</shortcuts>
