@@ -74,38 +74,57 @@ Because this application acts directly on the interface, Android safely isolates
 
 ---
 
-## Gemini Voice Routines Configuration
+## Gemini Voice Automations Configuration
 
-To trigger your app's functions completely hands-free without manually executing command-line intent strings, you must configure Google Assistant/Gemini to act as a voice trigger mapper.
+Google Assistant and Gemini route system commands through the **Google Home** application.
 
-### Process: Creating a Universal Wildcard Click Tool
-This routine maps a single conversational shortcut to your generic button-clicking engine, removing the need to hardcode words ahead of time.
+Because standalone phone routines have transitioned to the cloud, you must build these shortcuts directly inside the Google Home ecosystem to prevent the AI from defaulting to a web search.
 
-1. Open the **Google Home** app on your phone.
-2. Tap your profile icon in the top right and select **Assistant Settings** > **Routines**.
-3. Tap the **"+" (New)** icon to build a custom routine.
-4. **Configure the Trigger ("When I say to Google"):**
-   * Select **Voice command**.
-   * Type exact text: `Click $` (or `Tap $`). The `$` character acts as an on-the-fly wildcard parameter.
-5. **Configure the System Action ("The Assistant will..."):**
-   * Tap **Add action** and choose **Try adding your own**.
-   * Paste the exact structural intent broadcast command block:
-     ```text
+### Process 1: Creating the System Connection Diagnostic Test
+Use this routine to verify that your voice commands are successfully hitting your background APK without needing to open YouTube or find text on a screen.
+
+1. Open the **Google Home** app on your phone or tablet.
+2. Navigate to the **Automations** tab on the bottom menu and tap the **"+" (Add)** floating action button.
+3. Select **Household** or **Personal** (Personal is recommended for individual voice matching).
+4. **Configure the Trigger ("When I say to Gemini/Google"):**
+   * Tap **Add starter** and choose **Voice command**.
+   * Type the phrase: `Test voice bridge` (or `Run assistant diagnostics`).
+5. **Configure the System Action:**
+   * Tap **Add action** and select **Try adding your own**.
+   * Paste the exact package intent call:
+```text
+     Send intent com.example.voiceassistantbridge.RUN_TEST
+     ```
+6. Tap **Save**. 
+7. *To test:* Say *"Hey Gemini, test voice bridge."* The phone will audibly respond: *"Testing..."* out of its primary speaker.
+
+### Process 2: Creating a Universal Wildcard Click Tool
+This routine maps a single conversational shortcut to your generic button-clicking engine, removing the need to hardcode specific words ahead of time.
+
+1. Inside the **Automations** tab of the Google Home app, tap the **"+" (Add)** icon.
+2. **Configure the Trigger:**
+   * Tap **Add starter** and choose **Voice command**.
+   * Type exact text: `Click $` (or `Tap $`). The `$` character acts as an on-the-fly wildcard variable.
+3. **Configure the System Action:**
+   * Tap **Add action** and select **Try adding your own**.
+   * Paste the following command sequence:
+```text
      Send intent com.example.voiceassistantbridge.CLICK_TEXT with extra target_text string $
      ```
-6. Tap **Save**.
+   *(Note: If Gemini attempts to run a web search instead of firing the intent, change this action line to: `Open app by intent: com.example.voiceassistantbridge.CLICK_TEXT`)*
+4. Tap **Save**.
 
-### Process: Creating the YouTube Watch Later Macro
-This routing allows the user to easily load their watch queue using natural phrasing.
+### Process 3: Creating the YouTube Watch Later Macro
+This routing allows the user to easily load their watch queue hands-free using completely natural phrasing.
 
-1. Inside the **Routines** menu, click **New Routine**.
+1. Inside the **Automations** tab, tap the **"+" (Add)** icon.
 2. **Configure the Trigger:**
-   * Select **Voice command**.
+   * Tap **Add starter** and choose **Voice command**.
    * Type exact text: `Open my Watch Later queue` (or `Check my watch later list`).
 3. **Configure the Action:**
-   * Select **Try adding your own**.
+   * Tap **Add action** and select **Try adding your own**.
    * Paste the package-restricted signal launcher:
-     ```text
+```text
      Send intent com.example.voiceassistantbridge.OPEN_WATCH_LATER
      ```
 4. Tap **Save**.
@@ -114,17 +133,14 @@ This routing allows the user to easily load their watch queue using natural phra
 
 ## Operational Vocabulary Matrix
 
-Once the setups above are complete, the user can speak these fluid phrase variations to activate the background Kotlin architecture completely eyes-free. All feedback confirmations will automatically announce out of the phone's primary audio speaker.
+Once the setups above are complete, you can use any of these fluid phrase variations. All feedback confirmations will automatically announce out of the phone's primary audio speaker.
 
 | Intent Context | Natural Phrase to Speak | System Execution Result |
 | :--- | :--- | :--- |
-| **YouTube Playlist** | *"Hey Google, open my Watch Later queue"* | Launches native YouTube app, opens profile layout, checks for visibility, expands Playlists via fallback if hidden, and opens target. |
+| **System Check** | *"Hey Gemini, test voice bridge"* <br>or *"Hey Google, run assistant diagnostics"* | Triggers `executeSystemDiagnosticsTest()`, logging the signal and speaking back a success confirmation out loud. |
+| **YouTube Playlist** | *"Hey Gemini, open my Watch Later queue"* | Launches native YouTube app, opens profile layout, checks for visibility, and expands Playlists via fallback if hidden. |
 | **Credential Filling** | *"Hey Google, click Autofill"* | Intercepts system overlay window layer, scans for active text match, and simulates physical input tap. |
-| **Form Navigation** | *"Hey Google, click Continue"* | Bypasses standard app boundaries to activate general confirmation workflows. |
-| **Action Confirmation**| *"Hey Google, click Accept"* | Fires universal accessibility clicker tool directly over structural system prompts. |
-
-
-*(Note: This holds the audio focus token open so the user can speak their follow-up event parameters natively into the connected cloud database.)*
+| **Form Navigation** | *"Hey Gemini, click Continue"* | Bypasses standard app boundaries to activate general confirmation workflows dynamically. |
 
 ---
 
