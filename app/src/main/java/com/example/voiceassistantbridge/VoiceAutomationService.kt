@@ -120,6 +120,7 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
 
     /**
      * Dynamically searches for and clicks the "You" or "Library" main profile menu.
+     * Patched to bypass the top-left "YouTube" branding header text match.
      */
     private fun executeYouTubeNavigationSequence() {
         val rootNode: AccessibilityNodeInfo? = rootInActiveWindow
@@ -128,23 +129,60 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
             return
         }
 
-        val targetNode = findNodeByTextAlternative(rootNode, "You")
-            ?: findNodeByTextAlternative(rootNode, "Library")
+        // TRY REFINED SEARCH: Look for a node that has "You" or "Library"
+        // AND specifically lives inside the bottom navigation bar or is marked as a tab.
+        var targetNode = findBottomTabNode(rootNode, "You")
+            ?: findBottomTabNode(rootNode, "Library")
+
+        // FALLBACK SEARCH: If the refined navigation scanner misses it,
+        // use your original text alternative helper.
+        if (targetNode == null) {
+            targetNode = findNodeByTextAlternative(rootNode, "You")
+                ?: findNodeByTextAlternative(rootNode, "Library")
+        }
 
         if (targetNode != null && performClickAction(targetNode)) {
             speak("Navigating to profile.")
-
-            // Reset our retry counter for the first phase
             watchLaterRetryCount = 0
 
-            // Pause briefly for the page transition, then search for Watch Later
             Handler(Looper.getMainLooper()).postDelayed({
                 clickWatchLaterSubMenu()
             }, 1500)
         } else {
-            // Fallback: If bottom tabs aren't accessible, try scanning the direct screen anyway
             clickWatchLaterSubMenu()
         }
+    }
+
+    /**
+     * Helper to locate bottom bar tabs by verifying they are actually clickable
+     * or marked as selection items, ignoring top-left text branding and contextual tabs.
+     */
+    private fun findBottomTabNode(root: AccessibilityNodeInfo, targetText: String): AccessibilityNodeInfo? {
+        val matches = root.findAccessibilityNodeInfosByText(targetText)
+        for (node in matches) {
+            // Filter 1: Ensure the node or its structural wrapper is actually actionable
+            if (node.isClickable || (node.parent != null && node.parent.isClickable)) {
+
+                val contentDesc = node.contentDescription?.toString() ?: ""
+                val textStr = node.text?.toString() ?: ""
+
+                // Filter 2: Explicitly ignore top-left branding headers
+                if (contentDesc.contains("YouTube", ignoreCase = true) ||
+                    textStr.equals("YouTube", ignoreCase = true)) {
+                    continue // Skip to the next match
+                }
+
+                // Filter 3: Explicitly ignore the "New to you" contextual feed pill
+                if (contentDesc.contains("New to you", ignoreCase = true) ||
+                    textStr.contains("New to you", ignoreCase = true)) {
+                    continue // Skip to the next match
+                }
+
+                // If it passes all security rules, this is your bottom profile tab node!
+                return node
+            }
+        }
+        return null
     }
 
     /**
@@ -230,17 +268,30 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
 
     /**
      * VERY IMPORTANT
-     * Call this method when your custom voice command parser (or an incoming Intent) 
-     * tells the app to click something specific on the screen.
+     * Processes macro routing variables FIRST, then falls back to searching
+     * interactive windows if a structural command string is absent.
      */
     fun findAndClickButtonByText(targetText: String) {
-        // Get ALL interactive windows currently visible on the screen (including system)
+        // Clean up text boundaries to secure fuzzy lookups
+        val query = targetText.trim()
+
+        // 1. MACRO EVALUATION ENGINE LAYER (Intercept routing tags before scanning)
+        if (query.contains("test", ignoreCase = true) || query.contains("diagnostics", ignoreCase = true)) {
+            executeSystemDiagnosticsTest()
+            return
+        }
+
+        if (query.contains("later", ignoreCase = true) || query.contains("watch later", ignoreCase = true)) {
+            openYouTubeWatchLaterHandsFree()
+            return
+        }
+
+        // 2. FALLBACK SCREEN SCANNER LAYER (Only runs if text does not match structural macros)
         val windows = windows
         if (windows.isEmpty()) {
-            // Fallback to active window if window list is empty
             val rootNode: AccessibilityNodeInfo? = rootInActiveWindow
             if (rootNode != null) {
-                searchAndClickInNode(rootNode, targetText)
+                searchAndClickInNode(rootNode, query)
             } else {
                 speak("Screen content is not available.")
             }
@@ -249,19 +300,18 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
 
         var clickedSuccessfully = false
 
-        // Loop through every window layers from top to bottom
         for (window in windows) {
             val rootNode = window.root
             if (rootNode != null) {
-                if (searchAndClickInNode(rootNode, targetText)) {
+                if (searchAndClickInNode(rootNode, query)) {
                     clickedSuccessfully = true
-                    break // Stop searching once we found and clicked it
+                    break
                 }
             }
         }
 
         if (!clickedSuccessfully) {
-            speak("Could not find a button labeled $targetText on this screen.")
+            speak("Could not find a button labeled $query on this screen.")
         }
     }
 

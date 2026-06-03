@@ -73,19 +73,19 @@ Open the **Terminal** tab at the bottom of Android Studio and run these commands
 ### 1. Test the Diagnostic Failsafe Route
 Verify that your proxy intercepts queries and communicates successfully with your background Accessibility Service:
 ```bash
-adb shell am start -a android.intent.action.VIEW -n com.example.voiceassistantbridge/.VoiceProxyActivity --es query "run a system test"
+adb shell am start -a android.intent.action.VIEW -n com.example.voiceassistantbridge/.VoiceProxyActivity --es query "test"
 ```
 
 ### 2. Test the Youtube Automation Route
 Verify that the navigation macro works
 ```bash
-adb shell am start -a android.intent.action.VIEW -n com.example.voiceassistantbridge/.VoiceProxyActivity --es query "open watch later"
+adb shell am start -a android.intent.action.VIEW -n com.example.voiceassistantbridge/.VoiceProxyActivity --es query "later"
 ```
 
 ### 3. Test the Universal Click Macro
 Simulate clicking a button labeled "Continue" on whichever screen layer is currently open
 ```bash
-adb shell am start -a android.intent.action.VIEW -n com.example.voiceassistantbridge/.VoiceProxyActivity --es query "click Continue"
+adb shell am start -a android.intent.action.VIEW -n com.example.voiceassistantbridge/.VoiceProxyActivity --es query "Shorts"
 ```
 
 ---
