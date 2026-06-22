@@ -1,5 +1,6 @@
 package com.example.voiceassistantbridge
 
+import android.util.Log
 import com.google.firebase.Firebase
 import com.google.firebase.ai.ai
 import com.google.firebase.ai.type.GenerativeBackend
@@ -15,41 +16,65 @@ class VoiceAiProcessor {
         .generativeModel(
             modelName = "gemini-3.5-flash",
             generationConfig = generationConfig {
-                responseMimeType = "application/json" // Force Gemini to reply in pure JSON
+                responseMimeType = "application/json"
             },
             systemInstruction = content {
-                text("You are an Android accessibility bridge engine. " +
-                        "Analyze the user's spoken request and map it to one of these actions: " +
-                        "1. ACTION_TEST (if they want to run a test/diagnostic) " +
-                        "2. ACTION_YOUTUBE_LATER (if they want to see, watch, or open their watch later playlist) " +
-                        "3. ACTION_CLICK (if they want to click a visible screen item or button) " +
-                        "Your response must be a strict JSON object with two fields: " +
-                        " 'action': string (one of the three choices above) " +
-                        " 'target': string (the literal text string of the button they want clicked, empty string otherwise).")
+                text("You are an Android accessibility routing engine. " +
+                        "Analyze the user's spoken request and map it to exactly one of these actions:\n" +
+                        "1. ACTION_TEST - if they mention testing, diagnostics, checking if things work.\n" +
+                        "2. ACTION_YOUTUBE_LATER - if they want to see, watch, open, or look at their watch later playlist/queue on YouTube.\n" +
+                        "3. ACTION_CLICK - if they want to physically click or tap a specific visible button/text on screen.\n\n" +
+                        "CRITICAL RULES:\n" +
+                        "- Ignore conversational filler greetings like 'hey', 'hi', 'hello', 'can you please'. Do not treat them as targets.\n" +
+                        "- For ACTION_CLICK, extract ONLY the exact, literal name of the button to click in the 'target' field.\n" +
+                        "- For ACTION_TEST and ACTION_YOUTUBE_LATER, leave the 'target' field as an empty string (\"\").\n\n" +
+                        "Your response must be a single, strict JSON object with fields 'action' and 'target'.")
             }
         )
 
-    /**
-     * Sends the raw text string to Gemini and extracts the structured JSON command payload.
-     */
     suspend fun processVoiceIntent(rawSpokenText: String): Pair<String, String> {
         return withContext(Dispatchers.IO) {
             try {
                 val prompt = "User said: \"$rawSpokenText\""
                 val response = model.generateContent(prompt)
-                val jsonText = response.text ?: ""
 
-                // Manual JSON parsing
-                val actionRegex = "\"action\"\\s*:\\s*\"([^\"]+)\"".toRegex()
-                val targetRegex = "\"target\"\\s*:\\s*\"([^\"]+)\"".toRegex()
+                var jsonText = response.text ?: ""
+                jsonText = jsonText.replace("```json", "")
+                jsonText = jsonText.replace("```", "").trim()
 
-                val action = actionRegex.find(jsonText)?.groupValues?.get(1) ?: "ACTION_CLICK"
-                val target = targetRegex.find(jsonText)?.groupValues?.get(1) ?: rawSpokenText
+                Log.d("VoiceAiProcessor", "Raw JSON clean output from Gemini: $jsonText")
 
-                Pair(action, target)
+                val actionRegex = "\"action\"\\s*:\\s*\"([^\"]+)\"".toRegex(RegexOption.IGNORE_CASE)
+                val targetRegex = "\"target\"\\s*:\\s*\"([^\"]*)\"".toRegex(RegexOption.IGNORE_CASE)
+
+                val actionMatch = actionRegex.find(jsonText)?.groupValues?.get(1)?.trim()
+                val targetMatch = targetRegex.find(jsonText)?.groupValues?.get(1)?.trim()
+
+                val finalAction = actionMatch ?: "ACTION_CLICK"
+                val finalTarget = targetMatch ?: rawSpokenText
+
+                Pair(finalAction, finalTarget)
             } catch (e: Exception) {
-                // Fallback to a basic click command if the network fails or API throws an exception
-                Pair("ACTION_CLICK", rawSpokenText)
+                Log.e("VoiceAiProcessor", "AI Engine network processing failure! Using local fallback regex.", e)
+
+                // LOCAL FALLBACK: If the network or Firebase fails, clean up the text manually so it doesn't break
+                val cleanedFallbackTarget = rawSpokenText
+                    .replace("hey", "", ignoreCase = true)
+                    .replace("hi", "", ignoreCase = true)
+                    .replace("hello", "", ignoreCase = true)
+                    .replace("can you please", "", ignoreCase = true)
+                    .replace("click", "", ignoreCase = true)
+                    .replace("tap", "", ignoreCase = true)
+                    .trim()
+
+                // If the user's intent was obviously a macro, handle it locally too
+                val finalAction = when {
+                    rawSpokenText.contains("test", ignoreCase = true) || rawSpokenText.contains("diagnostics", ignoreCase = true) -> "ACTION_TEST"
+                    rawSpokenText.contains("watch later", ignoreCase = true) -> "ACTION_YOUTUBE_LATER"
+                    else -> "ACTION_CLICK"
+                }
+
+                Pair(finalAction, cleanedFallbackTarget)
             }
         }
     }

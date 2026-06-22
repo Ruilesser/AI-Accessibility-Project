@@ -41,7 +41,7 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
         }
         registerReceiver(commandReceiver, filter, RECEIVER_EXPORTED)
 
-        // GLOBAL FAILSAFE: Intercepts all unanticipated app-killing crashes
+        // GLOBAL FAILSAFE: Intercepts all app-killing crashes
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             Log.e("VoiceAutomationFailsafe", "CRITICAL CRASH DETECTED on thread ${thread.name}", throwable)
 
@@ -54,7 +54,7 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
                 startActivity(restartIntent)
             }
 
-            // Terminate the broken process so the operating system clears the stalled memory state safely
+            // Terminate the broken process
             android.os.Process.killProcess(android.os.Process.myPid())
             exitProcess(10)
         }
@@ -135,8 +135,7 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
             return
         }
 
-        // TRY REFINED SEARCH: Look for a node that has "You" or "Library"
-        // AND specifically lives inside the bottom navigation bar or is marked as a tab.
+        // REFINED SEARCH: Look for a node that has "You" or "Library"
         var targetNode = findBottomTabNode(rootNode, "You")
             ?: findBottomTabNode(rootNode, "Library")
 
@@ -166,25 +165,25 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
     private fun findBottomTabNode(root: AccessibilityNodeInfo, targetText: String): AccessibilityNodeInfo? {
         val matches = root.findAccessibilityNodeInfosByText(targetText)
         for (node in matches) {
-            // Filter 1: Ensure the node or its structural wrapper is actually actionable
+            // Filter 1: Ensure the node is actionable
             if (node.isClickable || (node.parent != null && node.parent.isClickable)) {
 
                 val contentDesc = node.contentDescription?.toString() ?: ""
                 val textStr = node.text?.toString() ?: ""
 
-                // Filter 2: Explicitly ignore top-left branding headers
+                // Filter 2: Ignore top-left branding headers
                 if (contentDesc.contains("YouTube", ignoreCase = true) ||
                     textStr.equals("YouTube", ignoreCase = true)) {
                     continue // Skip to the next match
                 }
 
-                // Filter 3: Explicitly ignore the "New to you" contextual feed pill
+                // Filter 3: Ignore the "New to you" contextual feed
                 if (contentDesc.contains("New to you", ignoreCase = true) ||
                     textStr.contains("New to you", ignoreCase = true)) {
                     continue // Skip to the next match
                 }
 
-                // If it passes all security rules, this is your bottom profile tab node!
+                // This is the bottom profile tab node
                 return node
             }
         }
@@ -237,15 +236,13 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
      */
     private fun navigateToPlaylistsSection() {
         val freshRootNode: AccessibilityNodeInfo = rootInActiveWindow ?: return
-
-        // Because freshRootNode is now guaranteed non-null, this line works perfectly!
         val expandNode = findNodeByTextAlternative(freshRootNode, "Playlists")
             ?: findNodeByTextAlternative(freshRootNode, "See all")
 
         if (expandNode != null && performClickAction(expandNode)) {
             speak("Expanding playlists views.")
 
-            // Give the sub-menu 1.5 seconds to open, then run final sweep
+            // Give the sub-menu 1.5 seconds to open, then run final check
             Handler(Looper.getMainLooper()).postDelayed({
                 lookForWatchLaterInPlaylists()
             }, 1500)
@@ -260,7 +257,7 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
     private fun lookForWatchLaterInPlaylists() {
         val finalRootNode: AccessibilityNodeInfo? = rootInActiveWindow
         if (finalRootNode == null) {
-            speak("Screen content lost during playlist expansion.")
+            speak("Screen content lost during playlist process.")
             return
         }
 
@@ -276,23 +273,23 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
      * VERY IMPORTANT
      * Processes macro routing variables FIRST, then falls back to searching
      * interactive windows if a structural command string is absent.
-     *  Process queries using Firebase Gemini AI (hopefully it works)
-     *  Routes after
+     * Process queries using Firebase Gemini AI (hopefully it works)
+     * Routes after
      */
     fun findAndClickButtonByText(targetText: String) {
         val cleanInput = targetText.trim()
         if (cleanInput.isEmpty()) return
 
-        // Launch an asynchronous coroutine block to call the Gemini API safely off the main UI thread
+        // Call the Gemini API safely off the main UI thread
         serviceScope.launch {
-            speak("Processing command with Gemini...")
+            speak("Processing command with Gemini")
 
-            // Send the raw text to your new AI processor
+            // Send the raw text to AI processor
             val (action, target) = aiProcessor.processVoiceIntent(cleanInput)
 
             Log.d("VoiceAutomationAI", "Gemini classified Action: $action, Target: $target")
 
-            // Execute code blocks based on structural AI classification layout rules
+            // Execute code blocks based on structural AI
             when (action) {
                 "ACTION_TEST" -> {
                     executeSystemDiagnosticsTest()
@@ -300,9 +297,14 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
                 "ACTION_YOUTUBE_LATER" -> {
                     openYouTubeWatchLaterHandsFree()
                 }
-                else -> {
-                    // Fall back to scanning layout windows for the precise target word Gemini isolated
+                "ACTION_CLICK" -> {
+                    // Success path
                     executeFallbackScreenScanner(target)
+                }
+                else -> {
+                    // Safety Failsafe: The AI failed or returned an invalid string
+                    // Look for the clean raw input text
+                    executeFallbackScreenScanner(cleanInput)
                 }
             }
         }
