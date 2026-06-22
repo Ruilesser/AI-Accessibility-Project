@@ -13,3 +13,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+# Hide Firebase/Google Configuration Files
+**/google-services.json
