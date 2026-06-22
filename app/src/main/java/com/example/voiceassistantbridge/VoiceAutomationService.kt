@@ -12,8 +12,14 @@ import android.util.Log
 import java.util.Locale
 import androidx.core.net.toUri
 import kotlin.system.exitProcess
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListener {
+    // For AI
+    private val aiProcessor = VoiceAiProcessor()
+    private val serviceScope = CoroutineScope(Dispatchers.Main)
 
     private lateinit var commandReceiver: VoiceCommandReceiver
     private lateinit var tts: TextToSpeech
@@ -270,23 +276,40 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
      * VERY IMPORTANT
      * Processes macro routing variables FIRST, then falls back to searching
      * interactive windows if a structural command string is absent.
+     *  Process queries using Firebase Gemini AI (hopefully it works)
+     *  Routes after
      */
     fun findAndClickButtonByText(targetText: String) {
-        // Clean up text boundaries to secure fuzzy lookups
-        val query = targetText.trim()
+        val cleanInput = targetText.trim()
+        if (cleanInput.isEmpty()) return
 
-        // 1. MACRO EVALUATION ENGINE LAYER (Intercept routing tags before scanning)
-        if (query.contains("test", ignoreCase = true) || query.contains("diagnostics", ignoreCase = true)) {
-            executeSystemDiagnosticsTest()
-            return
+        // Launch an asynchronous coroutine block to call the Gemini API safely off the main UI thread
+        serviceScope.launch {
+            speak("Processing command with Gemini...")
+
+            // Send the raw text to your new AI processor
+            val (action, target) = aiProcessor.processVoiceIntent(cleanInput)
+
+            Log.d("VoiceAutomationAI", "Gemini classified Action: $action, Target: $target")
+
+            // Execute code blocks based on structural AI classification layout rules
+            when (action) {
+                "ACTION_TEST" -> {
+                    executeSystemDiagnosticsTest()
+                }
+                "ACTION_YOUTUBE_LATER" -> {
+                    openYouTubeWatchLaterHandsFree()
+                }
+                else -> {
+                    // Fall back to scanning layout windows for the precise target word Gemini isolated
+                    executeFallbackScreenScanner(target)
+                }
+            }
         }
+    }
 
-        if (query.contains("later", ignoreCase = true) || query.contains("watch later", ignoreCase = true)) {
-            openYouTubeWatchLaterHandsFree()
-            return
-        }
-
-        // 2. FALLBACK SCREEN SCANNER LAYER (Only runs if text does not match structural macros)
+    // Original code in findAndClickButtonByText function into fallback function for seraching in windows
+    private fun executeFallbackScreenScanner(query: String) {
         val windows = windows
         if (windows.isEmpty()) {
             val rootNode: AccessibilityNodeInfo? = rootInActiveWindow
@@ -299,7 +322,6 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
         }
 
         var clickedSuccessfully = false
-
         for (window in windows) {
             val rootNode = window.root
             if (rootNode != null) {

@@ -18,7 +18,7 @@ class VoiceAiProcessor {
                 responseMimeType = "application/json" // Force Gemini to reply in pure JSON
             },
             systemInstruction = content {
-                text("You are an Android accessibility routing engine. " +
+                text("You are an Android accessibility bridge engine. " +
                         "Analyze the user's spoken request and map it to one of these actions: " +
                         "1. ACTION_TEST (if they want to run a test/diagnostic) " +
                         "2. ACTION_YOUTUBE_LATER (if they want to see, watch, or open their watch later playlist) " +
@@ -39,7 +39,7 @@ class VoiceAiProcessor {
                 val response = model.generateContent(prompt)
                 val jsonText = response.text ?: ""
 
-                // Manual JSON parsing to safely pull fields without crashing
+                // Manual JSON parsing
                 val actionRegex = "\"action\"\\s*:\\s*\"([^\"]+)\"".toRegex()
                 val targetRegex = "\"target\"\\s*:\\s*\"([^\"]+)\"".toRegex()
 
