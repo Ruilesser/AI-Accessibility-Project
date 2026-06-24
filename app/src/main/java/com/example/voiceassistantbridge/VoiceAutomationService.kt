@@ -129,6 +129,13 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
             return
         }
 
+        // Check if "Watch later" is already visible (e.g., if YouTube was already open)
+        val directWatchLater = findNodeByTextAlternative(rootNode, "Watch later")
+        if (directWatchLater != null && performClickAction(directWatchLater)) {
+            speak("Opening your watch later queue directly.")
+            return
+        }
+
         // TRY REFINED SEARCH: Look for a node that has "You" or "Library"
         var targetNode = findBottomTabNode(rootNode, "You")
             ?: findBottomTabNode(rootNode, "Library")

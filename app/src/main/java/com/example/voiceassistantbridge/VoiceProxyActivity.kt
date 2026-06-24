@@ -32,8 +32,16 @@ class VoiceProxyActivity : Activity() {
             }
         }
 
+        val btnExit = Button(this).apply {
+            text = "Exit"
+            setOnClickListener {
+                finish()
+            }
+        }
+
         layout.addView(btnWatchLater)
         layout.addView(btnTest)
+        layout.addView(btnExit)
         setContentView(layout)
 
         // If Gemini passed a query, try to handle it immediately
