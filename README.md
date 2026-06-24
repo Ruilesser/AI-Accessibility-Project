@@ -2,6 +2,8 @@
 
 An open-source Android Accessibility app designed to help individuals manage daily tasks hands-free not provided by Gemini. By bridging **Gemini's voice command layer** with a custom background **Android Accessibility Service**, this system converts spoken commands into screen actions, providing a bridge for users with limited mobility.
 
+Update: The app now uses Google's Voice Access app which lets users tap on items.
+
 ---
 
 ## Project Scope & Task Inventory
@@ -47,6 +49,8 @@ To install your custom background service, you must unlock developer privileges 
 1. Open your phone's **Settings** and navigate to **About Phone**.
 2. Find the **Build Number** row and tap it rapidly **7 times** until a popup says *"You are now a developer!"*
 3. Go back to the main Settings menu, find **System > Developer Options**, and switch on **USB Debugging**.
+4. Install the Voice Access by Google app in the play store.
+5. Run the Voice Access app.
 
 ### Step 2: Compile and Build the APK
 1. Connect your phone to your computer via USB. If prompted on the phone screen, select **Allow USB Debugging**.
@@ -73,56 +77,34 @@ Open the **Terminal** tab at the bottom of Android Studio and run these commands
 ### 1. Test the Diagnostic Failsafe Route
 Verify that your proxy intercepts queries and communicates successfully with your background Accessibility Service:
 ```bash
-adb shell am start -a android.intent.action.VIEW -n com.example.voiceassistantbridge/.VoiceProxyActivity --es query "test"
+adb shell am start -a android.intent.action.VIEW -n com.example.voiceassistantbridge/.VoiceProxyActivity --es query '\"test\"'
 ```
 
 ### 2. Test the Youtube Automation Route
 Verify that the navigation macro works
 ```bash
-adb shell am start -a android.intent.action.VIEW -n com.example.voiceassistantbridge/.VoiceProxyActivity --es query "later"
+adb shell am start -a android.intent.action.VIEW -n com.example.voiceassistantbridge/.VoiceProxyActivity --es query '\"watch later\"'
 ```
 
 ### 3. Test the Universal Click Macro
-Simulate clicking a button labeled "Continue" on whichever screen layer is currently open
+Simulate clicking a button labeled "placeholder" on whichever screen layer is currently open
 ```bash
-adb shell am start -a android.intent.action.VIEW -n com.example.voiceassistantbridge/.VoiceProxyActivity --es query "Shorts"
+adb shell am start -a android.intent.action.VIEW -n com.example.voiceassistantbridge/.VoiceProxyActivity --es query '\"click placeholder\"'
 ```
+
+Update: due to using the Voice Access, these commands may not be the most up to date.
 
 ---
 
 ## Gemini Voice Automations Configuration
 
-Because Gemini processes system instructions on a highly literal level compared to legacy voice engines, raw background intent broadcasts are restricted for device security. To trigger your accessibility workflows hands-free, this project passes parameters using explicit app-scoped voice routing.
+Because Gemini processes system instructions on a highly literal level compared to legacy voice engines, raw background intent broadcasts are restricted for device security. To trigger your accessibility workflows hands-free, this project passes parameters using explicit buttons while having Voice Access be turned on by Gemini. This lets Voice Access be the bridge that runs the macros available on the Voice Assistant Bridge.
 
-By defining an implicit intent view layer on your `VoiceProxyActivity`, Gemini can process a conversational search command, parse the trailing query string, and pass it directly into your local app framework without cloud-side routine compiling.
+
 
 ### How it Works
-1. You say the explicit wakeup phrase targeting the app namespace: `"Hey Gemini, open [VoiceAssistantBridge] and search for..."`
-2. Gemini opens your transparent `VoiceProxyActivity`, passing your spoken phrase into the intent bundle extra.
-3. The invisible proxy inspects the string (`.contains("test")`, `.contains("watch later")`), triggers the designated accessibility action, and terminates instantly without interrupting the active screen layout.
+1. You say the explicit wakeup phrase targeting the app namespace: `"Hey Gemini, start Voice Access"`
+2. Gemini opens `Voice Access`, which starts listening to you.
+3. You can now say `Open Bridge` to Voice Access which lets the UI pop up. Then, you can say `click button` where button is the placeholder and it will run the macro corresponding to the button.
 
-Example:\n
-1. **The Diagnostic Failsafe Route:**
-> *"Open VoiceAssistantBridge and search for **run a system test**"*
-> *(or simply "**run test**")*
-
-2. **The YouTube Automation Route:**
-> *"Open VoiceAssistantBridge and search for **open watch later**"*
-
-3. **The Universal Click Macro:**
-> *"Open VoiceAssistantBridge and search for **click Continue**"*
-> *(or any other button name you want to tap, like "**click (FILL HERE)**")*
 ---
-
-## Operational Vocabulary Matrix
-
-To execute these macros hands-free, wake up your default digital assistant (**"Hey Gemini"** or **"Hey Google"**) and state the following literal phrase patterns. 
-
-| Intent Context | Voice Phrase to Speak | System Execution Result |
-| :--- | :--- | :--- |
-| **System Check** | *"Hey Gemini, open VoiceAssistantBridge and search for **run a system test**"* | Launches the transparent proxy, fires the internal `RUN_TEST` broadcast, and loops an audible verification success message out of the phone speaker. |
-| **YouTube Playlist** | *"Hey Google, open VoiceAssistantBridge and search for **open watch later**"* | Bypasses standard screen restrictions, forces open the native YouTube app package, and executes the multi-stage playlist layout sweeps. |
-| **Universal Clicker** | *"Hey Gemini, open VoiceAssistantBridge and search for **click Autofill**"* | Strips out control action verbs, extracts the target keyword string ("Autofill"), and tells the background service to click the matching text node. |
-| **Form Navigation** | *"Hey Google, open VoiceAssistantBridge and search for **click Continue**"* | Scans layout boundary nodes for active, unclickable confirmation elements matching "Continue" and fires a virtual touch input layer. |
-
-> **Production Troubleshooting Tip:** Gemini expects literal structural commands. If your device defaults to a generic Google web search instead of executing your macro, verify your syntax explicitly matches the `open [App Name] and search for [Command]` pattern. This forces the Android operating system to treat the trailing string as a local application variable.
