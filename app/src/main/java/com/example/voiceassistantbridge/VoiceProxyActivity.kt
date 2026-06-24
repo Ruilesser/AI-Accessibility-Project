@@ -3,40 +3,63 @@ package com.example.voiceassistantbridge
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
+import android.widget.Button
+import android.widget.LinearLayout
+import android.view.Gravity
 
 class VoiceProxyActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Extract the spoken text parsed by Gemini from the shortcuts parameter
-        val spokenQuery = intent.getStringExtra("query") ?: ""
-        Log.d("VoiceProxyActivity", "Gemini Query Intercepted: $spokenQuery")
-
-        if (spokenQuery.isNotEmpty()) {
-            val broadcastIntent = Intent().apply {
-                setPackage(packageName) // ensure only this app receives it
-                
-                // Determine if it's a test command or a click command based on phrasing
-                if (spokenQuery.contains("test", ignoreCase = true) || spokenQuery.contains("diagnostics", ignoreCase = true)) {
-                    action = VoiceCommandReceiver.ACTION_RUN_TEST
-                } else if (spokenQuery.contains("watch later", ignoreCase = true)) {
-                    action = VoiceCommandReceiver.ACTION_OPEN_WATCH_LATER
-                } else {
-                    // Extract core text targets (e.g., if user says "click Continue", we pass "Continue")
-                    action = VoiceCommandReceiver.ACTION_CLICK_TEXT
-                    val cleanedText = spokenQuery
-                        .replace("click", "", ignoreCase = true)
-                        .replace("tap", "", ignoreCase = true)
-                        .trim()
-                    putExtra("target_text", cleanedText)
-                }
-            }
-            // Send to your running Accessibility Service Receiver safely
-            sendBroadcast(broadcastIntent)
+        // Create a simple UI so Voice Access has buttons to "see" and click
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(50, 50, 50, 50)
         }
 
-        // Close instantly so no window UI blinks onto the user's screen
-        finish()
+        val btnWatchLater = Button(this).apply {
+            text = "Open Watch Later"
+            setOnClickListener {
+                sendActionBroadcast(VoiceCommandReceiver.ACTION_OPEN_WATCH_LATER)
+            }
+        }
+
+        val btnTest = Button(this).apply {
+            text = "Run Diagnostics"
+            setOnClickListener {
+                sendActionBroadcast(VoiceCommandReceiver.ACTION_RUN_TEST)
+            }
+        }
+
+        layout.addView(btnWatchLater)
+        layout.addView(btnTest)
+        setContentView(layout)
+
+        // If Gemini passed a query, try to handle it immediately
+        val spokenQuery = intent.getStringExtra("query") ?: ""
+        if (spokenQuery.isNotEmpty()) {
+            handleQuery(spokenQuery)
+            // Note: We don't finish() immediately anymore if we want the UI to stay visible for Voice Access
+        }
+    }
+
+    private fun handleQuery(query: String) {
+        val lowered = query.lowercase()
+        when {
+            lowered.contains("test") || lowered.contains("diagnostics") -> {
+                sendActionBroadcast(VoiceCommandReceiver.ACTION_RUN_TEST)
+            }
+            lowered.contains("watch later") || lowered.contains("later") -> {
+                sendActionBroadcast(VoiceCommandReceiver.ACTION_OPEN_WATCH_LATER)
+            }
+        }
+    }
+
+    private fun sendActionBroadcast(actionStr: String) {
+        val intent = Intent(actionStr).apply {
+            setPackage(packageName)
+        }
+        sendBroadcast(intent)
     }
 }
