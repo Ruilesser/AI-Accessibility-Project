@@ -15,6 +15,8 @@ class VoiceProxyActivity : Activity() {
 
         if (spokenQuery.isNotEmpty()) {
             val broadcastIntent = Intent().apply {
+                setPackage(packageName) // ensure only this app receives it
+                
                 // Determine if it's a test command or a click command based on phrasing
                 if (spokenQuery.contains("test", ignoreCase = true) || spokenQuery.contains("diagnostics", ignoreCase = true)) {
                     action = VoiceCommandReceiver.ACTION_RUN_TEST

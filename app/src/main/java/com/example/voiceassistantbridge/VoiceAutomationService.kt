@@ -35,11 +35,11 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
         }
         registerReceiver(commandReceiver, filter, RECEIVER_EXPORTED)
 
-        // GLOBAL FAILSAFE: Intercepts all unanticipated app-killing crashes
+        // GLOBAL FAILSAFE: Intercepts all crashes
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             Log.e("VoiceAutomationFailsafe", "CRITICAL CRASH DETECTED on thread ${thread.name}", throwable)
 
-            // Build an intent to automatically trigger a fresh reboot of your service/app package
+            // Build an intent to trigger a fresh reboot of your service
             val restartIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             }
@@ -48,7 +48,7 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
                 startActivity(restartIntent)
             }
 
-            // Terminate the broken process so the operating system clears the stalled memory state safely
+            // Terminate the broken process
             android.os.Process.killProcess(android.os.Process.myPid())
             exitProcess(10)
         }
@@ -61,7 +61,7 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
         }
     }
 
-    // This triggers out loud whenever the app needs to announce an action
+    // Triggers out loud whenever the app needs to announce an action
     private fun speak(text: String) {
         if (isTtsReady) {
             tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "AutomationID")
@@ -130,12 +130,10 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
         }
 
         // TRY REFINED SEARCH: Look for a node that has "You" or "Library"
-        // AND specifically lives inside the bottom navigation bar or is marked as a tab.
         var targetNode = findBottomTabNode(rootNode, "You")
             ?: findBottomTabNode(rootNode, "Library")
 
-        // FALLBACK SEARCH: If the refined navigation scanner misses it,
-        // use your original text alternative helper.
+        // FALLBACK SEARCH: If the refined navigation scanner misses it, use the original text alternative helper.
         if (targetNode == null) {
             targetNode = findNodeByTextAlternative(rootNode, "You")
                 ?: findNodeByTextAlternative(rootNode, "Library")
@@ -160,25 +158,24 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
     private fun findBottomTabNode(root: AccessibilityNodeInfo, targetText: String): AccessibilityNodeInfo? {
         val matches = root.findAccessibilityNodeInfosByText(targetText)
         for (node in matches) {
-            // Filter 1: Ensure the node or its structural wrapper is actually actionable
+            // Filter 1: Ensure the node is usable
             if (node.isClickable || (node.parent != null && node.parent.isClickable)) {
 
                 val contentDesc = node.contentDescription?.toString() ?: ""
                 val textStr = node.text?.toString() ?: ""
 
-                // Filter 2: Explicitly ignore top-left branding headers
+                // Filter 2: ignore top-left branding headers
                 if (contentDesc.contains("YouTube", ignoreCase = true) ||
                     textStr.equals("YouTube", ignoreCase = true)) {
                     continue // Skip to the next match
                 }
 
-                // Filter 3: Explicitly ignore the "New to you" contextual feed pill
+                // Filter 3: ignore the "New to you"
                 if (contentDesc.contains("New to you", ignoreCase = true) ||
                     textStr.contains("New to you", ignoreCase = true)) {
                     continue // Skip to the next match
                 }
 
-                // If it passes all security rules, this is your bottom profile tab node!
                 return node
             }
         }
@@ -187,7 +184,7 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
 
     /**
      * Searches layout for the specific "Watch later" item with automatic retry logic.
-     * If it fails after retrying, expands searh into Playlists sub-menu
+     * If it fails after retrying, expands search into Playlists sub-menu
      */
     private fun clickWatchLaterSubMenu() {
         val freshRootNode: AccessibilityNodeInfo? = rootInActiveWindow
@@ -199,7 +196,7 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
         val watchLaterNode = findNodeByTextAlternative(freshRootNode, "Watch later")
         if (watchLaterNode != null && performClickAction(watchLaterNode)) {
             speak("Your watch later queue is now open.")
-            watchLaterRetryCount = 0 // Success! Clear loop counter
+            watchLaterRetryCount = 0 // Clear loop counter when success
         } else {
             retryWatchLaterNavigation()
         }
@@ -218,8 +215,8 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
                 clickWatchLaterSubMenu()
             }, 500)
         } else {
-            // PHASE 2 FALLBACK: "Watch later" isn't visible on the main screen.
-            // Let's find the Playlists or "See all" button to reveal it.
+            // FALLBACK: "Watch later" isn't visible on the screen.
+            // Find the Playlists or "See all" button
             Log.d("VoiceAutomation", "Watch later not visible. Attempting to expand Playlists menu.")
             watchLaterRetryCount = 0 // Reset counter for the next phase
             navigateToPlaylistsSection()
@@ -232,7 +229,7 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
     private fun navigateToPlaylistsSection() {
         val freshRootNode: AccessibilityNodeInfo = rootInActiveWindow ?: return
 
-        // Because freshRootNode is now guaranteed non-null, this line works perfectly!
+        // freshRootNode is guaranteed non-null
         val expandNode = findNodeByTextAlternative(freshRootNode, "Playlists")
             ?: findNodeByTextAlternative(freshRootNode, "See all")
 
@@ -268,14 +265,13 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
 
     /**
      * VERY IMPORTANT
-     * Processes macro routing variables FIRST, then falls back to searching
+     * Processes macro routing variables, then falls back to searching
      * interactive windows if a structural command string is absent.
      */
     fun findAndClickButtonByText(targetText: String) {
-        // Clean up text boundaries to secure fuzzy lookups
+        // Clean up text boundaries
         val query = targetText.trim()
-
-        // 1. MACRO EVALUATION ENGINE LAYER (Intercept routing tags before scanning)
+        
         if (query.contains("test", ignoreCase = true) || query.contains("diagnostics", ignoreCase = true)) {
             executeSystemDiagnosticsTest()
             return
@@ -285,8 +281,7 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
             openYouTubeWatchLaterHandsFree()
             return
         }
-
-        // 2. FALLBACK SCREEN SCANNER LAYER (Only runs if text does not match structural macros)
+        
         val windows = windows
         if (windows.isEmpty()) {
             val rootNode: AccessibilityNodeInfo? = rootInActiveWindow

@@ -1,8 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shortcuts xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Universal Capability mapped to a Built-In Intent -->
+    <!-- Capability for opening features -->
+    <capability android:name="actions.intent.OPEN_APP_FEATURE">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.example.voiceassistantbridge"
+            android:targetClass="com.example.voiceassistantbridge.VoiceProxyActivity">
+            <parameter
+                android:name="feature"
+                android:key="query" />
+        </intent>
+    </capability>
+
+    <!-- Universal Capability fallback -->
     <capability android:name="actions.intent.GET_THING">
         <intent
             android:action="android.intent.action.VIEW"
