@@ -108,10 +108,10 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
         try {
             startActivity(intent)
 
-            // Wait 2.5 seconds for the app launch animation before starting UI scans
+            // Wait 2.75 seconds for the app launch animation before starting UI scans
             Handler(Looper.getMainLooper()).postDelayed({
                 executeYouTubeNavigationSequence()
-            }, 2500)
+            }, 2750)
 
         } catch (e: Exception) {
             speak("YouTube application is not installed or could not be opened.")
@@ -152,7 +152,7 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
 
             Handler(Looper.getMainLooper()).postDelayed({
                 clickWatchLaterSubMenu()
-            }, 1500)
+            }, 1750)
         } else {
             clickWatchLaterSubMenu()
         }
@@ -220,7 +220,7 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
 
             Handler(Looper.getMainLooper()).postDelayed({
                 clickWatchLaterSubMenu()
-            }, 500)
+            }, 750)
         } else {
             // FALLBACK: "Watch later" isn't visible on the screen.
             // Find the Playlists or "See all" button
@@ -243,10 +243,10 @@ class VoiceAutomationService : AccessibilityService(), TextToSpeech.OnInitListen
         if (expandNode != null && performClickAction(expandNode)) {
             speak("Expanding playlists views.")
 
-            // Give the sub-menu 1.5 seconds to open, then run final sweep
+            // Give the sub-menu 1.75 seconds to open, then run final sweep
             Handler(Looper.getMainLooper()).postDelayed({
                 lookForWatchLaterInPlaylists()
-            }, 1500)
+            }, 1750)
         } else {
             speak("Failed to find Watch Later or Playlists menu.")
         }

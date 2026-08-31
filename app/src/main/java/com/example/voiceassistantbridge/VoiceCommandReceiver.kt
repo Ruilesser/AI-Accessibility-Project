@@ -22,6 +22,7 @@ class VoiceCommandReceiver(private val service: VoiceAutomationService) : Broadc
             ACTION_OPEN_WATCH_LATER -> {
                 service.openYouTubeWatchLaterHandsFree()
             }
+            // Unused for now because of Android voice accessibility
             ACTION_CLICK_TEXT -> {
                 val targetText = intent.getStringExtra("target_text") ?: ""
                 if (targetText.isNotEmpty()) {
